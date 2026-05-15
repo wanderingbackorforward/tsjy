@@ -1,0 +1,10 @@
+import { useEffect, useState } from 'react';
+import { apiGet } from '../services/api';
+import { Chart } from '../components/Chart';
+export default function MonitoringAnalysisPage(){
+ const [points,setPoints]=useState<any[]>([]); const [readings,setReadings]=useState<any[]>([]); const [code,setCode]=useState('');
+ useEffect(()=>{apiGet('/monitoring/points').then(d=>{const ps=d.items||[]; setPoints(ps); setCode(ps[0]?.pointCode||'');});},[]);
+ useEffect(()=>{if(code) apiGet(`/monitoring/readings?point_code=${code}`).then(d=>setReadings(d.readings||[]));},[code]);
+ const option={tooltip:{trigger:'axis'},grid:{left:48,right:20,top:30,bottom:34},xAxis:{type:'category',data:readings.map((r:any)=>String(r.measuredAt||'').slice(5,10)),axisLabel:{color:'#8fb6d8'}},yAxis:{type:'value',name:'mm',axisLabel:{color:'#8fb6d8'},splitLine:{lineStyle:{color:'rgba(110,180,240,.12)'}}},series:[{name:'累计变化',type:'line',smooth:true,data:readings.map((r:any)=>r.cumulativeChange),lineStyle:{color:'#ffbf69',width:3}},{name:'预警线',type:'line',symbol:'none',data:readings.map(()=>-20),lineStyle:{color:'#ffd76b',type:'dashed'}},{name:'报警线',type:'line',symbol:'none',data:readings.map(()=>-25),lineStyle:{color:'#ff5b6e',type:'dashed'}}]};
+ return <main className="analysis-page"><section className="page-hero glass"><div><p className="eyebrow">Monitoring</p><h2>监测异常分析</h2><p>不是只看点位，而是看连续加速、阈值距离、风险源关联和施工环号响应。</p></div><select value={code} onChange={e=>setCode(e.target.value)}>{points.map((p:any)=><option key={p.pointCode}>{p.pointCode}</option>)}</select></section><section className="analysis-grid"><article className="glass wide"><h3>累计沉降与阈值</h3><Chart option={option} height={360}/></article><article className="glass wide"><h3>测点列表</h3><table className="data-table"><thead><tr><th>测点</th><th>对象</th><th>项目</th><th>预警</th><th>报警</th><th>状态</th></tr></thead><tbody>{points.map((p:any)=><tr key={p.pointId}><td>{p.pointCode}</td><td>{p.monitoringObject}</td><td>{p.monitoringItem}</td><td>{p.warningThreshold}</td><td>{p.alarmThreshold}</td><td>{p.alertLevel}</td></tr>)}</tbody></table></article></section></main>
+}

@@ -1,0 +1,241 @@
+import { useEffect, useMemo, useState } from 'react';
+import EChartPanel from '../components/EChartPanel';
+import { apiGetV3 } from '../services/api';
+import type { EChartsOption } from 'echarts';
+import './dashboard-echarts.css';
+
+const levelLabel: Record<string, string> = {
+  normal: '正常',
+  attention: '关注',
+  warning: '预警',
+  alarm: '报警',
+  info: '提示',
+};
+
+const color = {
+  text: '#dff7ff',
+  sub: '#8fb7d6',
+  grid: 'rgba(126,211,255,0.14)',
+  cyan: '#40e0ff',
+  green: '#59f0b3',
+  yellow: '#ffd166',
+  red: '#ff5a72',
+  blue: '#6aa9ff',
+};
+
+function axisBase() {
+  return {
+    axisLine: { lineStyle: { color: color.grid } },
+    axisLabel: { color: color.sub },
+    splitLine: { lineStyle: { color: color.grid } },
+  };
+}
+
+function safeArr(v: any) { return Array.isArray(v) ? v : []; }
+
+export default function DashboardPage() {
+  const [ringNo, setRingNo] = useState(361);
+  const [data, setData] = useState<any>(null);
+  const [tab, setTab] = useState<'overview' | 'ring' | 'risk' | 'monitoring' | 'operation' | 'source'>('overview');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiGetV3(`/analysis/evidence-dashboard?ring_no=${ringNo}`)
+      .then((d) => { setData(d); setError(''); })
+      .catch((e) => setError(String(e)));
+  }, [ringNo]);
+
+  const evidence = data?.chartEvidence || {};
+  const ops = safeArr(evidence.operationTrend);
+  const risks = safeArr(evidence.riskSources);
+  const mon = safeArr(evidence.monitoringSeries);
+  const metricStats = safeArr(evidence.metricStats);
+  const events = safeArr(evidence.events);
+  const grout = safeArr(evidence.slurryGrouting);
+  const web = evidence.webServiceSource || {};
+  const dq = evidence.dataQuality || { items: [], missing: [], score: 0 };
+
+  const xRings = ops.map((o: any) => o.ringNo);
+
+  const pressureOption: EChartsOption = useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    legend: { textStyle: { color: color.sub }, top: 0 },
+    grid: { left: 45, right: 20, top: 52, bottom: 36 },
+    xAxis: { type: 'category', data: xRings, ...axisBase() },
+    yAxis: { type: 'value', name: 'bar', nameTextStyle: { color: color.sub }, ...axisBase() },
+    series: [
+      { name: '切口压力', type: 'line', smooth: true, symbolSize: 5, data: ops.map((o: any) => o.facePressure), lineStyle: { width: 3 }, areaStyle: { opacity: 0.13 }, markLine: { symbol: 'none', data: [{ yAxis: 0.54, name: '方案上限/控制线' }, { xAxis: ringNo, name: '查看环' }] } },
+    ],
+  }), [ops, ringNo]);
+
+  const comboOption: EChartsOption = useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    legend: { textStyle: { color: color.sub }, top: 0 },
+    grid: { left: 52, right: 62, top: 55, bottom: 38 },
+    xAxis: { type: 'category', data: xRings, ...axisBase() },
+    yAxis: [
+      { type: 'value', name: '推力/扭矩 x1000', nameTextStyle: { color: color.sub }, ...axisBase() },
+      { type: 'value', name: '速度', nameTextStyle: { color: color.sub }, ...axisBase() },
+    ],
+    series: [
+      { name: '总推力', type: 'line', smooth: true, data: ops.map((o: any) => (o.totalThrust || 0) / 1000), markLine: { symbol: 'none', data: [{ xAxis: ringNo, name: '查看环' }] } },
+      { name: '刀盘扭矩', type: 'line', smooth: true, data: ops.map((o: any) => (o.cutterTorque || 0) / 1000) },
+      { name: '推进速度', type: 'bar', yAxisIndex: 1, data: ops.map((o: any) => o.advanceSpeed), itemStyle: { opacity: 0.5 } },
+    ],
+  }), [ops, ringNo]);
+
+  const deviationOption: EChartsOption = useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 80, right: 26, top: 30, bottom: 32 },
+    xAxis: { type: 'value', name: '%', nameTextStyle: { color: color.sub }, ...axisBase() },
+    yAxis: { type: 'category', data: metricStats.map((m: any) => m.name), axisLabel: { color: color.sub }, axisLine: { lineStyle: { color: color.grid } } },
+    series: [
+      { type: 'bar', name: '较近10环偏离', data: metricStats.map((m: any) => m.deviationVs10Pct), label: { show: true, formatter: '{c}%' }, markLine: { symbol: 'none', data: [{ xAxis: 10, name: '+10%' }, { xAxis: -10, name: '-10%' }] } },
+    ],
+  }), [metricStats]);
+
+  const monitoringOption: EChartsOption = useMemo(() => {
+    const picked = mon.slice(0, 5);
+    const dates = picked[0]?.readings?.map((r: any) => String(r.measuredAt).slice(5, 10)) || [];
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: { type: 'scroll', textStyle: { color: color.sub }, top: 0 },
+      grid: { left: 48, right: 42, top: 55, bottom: 38 },
+      xAxis: { type: 'category', data: dates, ...axisBase() },
+      yAxis: { type: 'value', name: 'mm', nameTextStyle: { color: color.sub }, ...axisBase() },
+      series: picked.map((p: any) => ({
+        name: p.pointCode,
+        type: 'line',
+        smooth: true,
+        data: safeArr(p.readings).map((r: any) => r.cumulativeChange),
+        markLine: p.alarmThreshold ? { symbol: 'none', data: [{ yAxis: -Math.abs(p.alarmThreshold), name: '报警阈值' }] } : undefined,
+      })),
+    };
+  }, [mon]);
+
+  const riskOption: EChartsOption = useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 110, right: 30, top: 28, bottom: 36 },
+    xAxis: { type: 'value', name: '里程m', nameTextStyle: { color: color.sub }, min: 53695, max: 59129, ...axisBase() },
+    yAxis: { type: 'category', data: risks.map((r: any) => r.riskName), axisLabel: { color: color.sub }, axisLine: { lineStyle: { color: color.grid } } },
+    series: [
+      { type: 'bar', name: '风险源区间', data: risks.map((r: any) => [r.startMileageM, r.riskName]), itemStyle: { opacity: 0 } },
+      { type: 'custom', name: '影响窗口', renderItem: (params: any, api: any) => {
+        const i = params.dataIndex;
+        const r = risks[i];
+        const y = api.coord([r.startMileageM, i])[1];
+        const x0 = api.coord([r.startMileageM, i])[0];
+        const x1 = api.coord([r.endMileageM, i])[0];
+        return { type: 'rect', shape: { x: x0, y: y - 8, width: Math.max(4, x1 - x0), height: 16 }, style: api.style({ fill: r.status === 'inside' ? color.yellow : 'rgba(64,224,255,0.28)' }) };
+      }, data: risks.map((r: any, idx: number) => [r.startMileageM, idx]) },
+      { name: '查看环里程', type: 'line', markLine: { symbol: 'none', data: [{ xAxis: data?.selectedRing?.endMileageM, name: data?.selectedRing?.endMileage }] } },
+    ],
+  }), [risks, data?.selectedRing]);
+
+  const groutingOption: EChartsOption = useMemo(() => ({
+    tooltip: { trigger: 'axis' },
+    legend: { textStyle: { color: color.sub }, top: 0 },
+    grid: { left: 52, right: 60, top: 52, bottom: 38 },
+    xAxis: { type: 'category', data: grout.map((g: any) => g.ringNo), ...axisBase() },
+    yAxis: [
+      { type: 'value', name: '注浆量/压力', nameTextStyle: { color: color.sub }, ...axisBase() },
+      { type: 'value', name: '比重', nameTextStyle: { color: color.sub }, ...axisBase() },
+    ],
+    series: [
+      { name: '注浆量', type: 'bar', data: grout.map((g: any) => g.groutingVolume) },
+      { name: '注浆压力', type: 'line', smooth: true, data: grout.map((g: any) => g.groutingPressure) },
+      { name: '出浆比重', type: 'line', yAxisIndex: 1, smooth: true, data: grout.map((g: any) => g.slurryOutDensity) },
+    ],
+  }), [grout]);
+
+  const qualityOption: EChartsOption = useMemo(() => ({
+    tooltip: {},
+    radar: { indicator: safeArr(dq.items).map((i: any) => ({ name: i.name, max: 100 })), axisName: { color: color.sub }, splitLine: { lineStyle: { color: color.grid } }, splitArea: { areaStyle: { color: ['rgba(64,224,255,0.04)', 'rgba(64,224,255,0.08)'] } } },
+    series: [{ type: 'radar', data: [{ name: '数据可信度', value: safeArr(dq.items).map((i: any) => i.score) }], areaStyle: { opacity: 0.25 } }],
+  }), [dq]);
+
+  const webGraphOption: EChartsOption = useMemo(() => ({
+    tooltip: {},
+    series: [{
+      type: 'graph',
+      layout: 'force',
+      roam: true,
+      label: { show: true, color: color.text },
+      force: { repulsion: 220, edgeLength: 95 },
+      data: safeArr(web.pipeline).map((name: string, idx: number) => ({ name, symbolSize: 55 - Math.min(idx * 4, 26) })),
+      links: safeArr(web.pipeline).slice(1).map((name: string, idx: number) => ({ source: web.pipeline[idx], target: name })),
+    }],
+  }), [web]);
+
+  if (error) return <div className="analysis-page"><div className="empty">加载失败：{error}</div></div>;
+  if (!data) return <div className="analysis-page"><div className="empty">正在加载 V3 施工研判与 ECharts 证据链...</div></div>;
+
+  return (
+    <div className="analysis-page">
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">SHIELD CONSTRUCTION ANALYSIS PLATFORM</p>
+          <h1>盾构施工研判与证据图谱</h1>
+          <p className="subline">不是展示字段，而是用趋势、偏离、风险窗口、监测响应和真实接口来源支撑结论。</p>
+        </div>
+        <div className="top-actions">
+          {['overview','ring','risk','monitoring','operation','source'].map((t) => <button key={t} className={tab===t?'active':''} onClick={() => setTab(t as any)}>{({overview:'研判总览',ring:'单环证据',risk:'风险复盘',monitoring:'监测异常',operation:'参数诊断',source:'真实接口源'} as any)[t]}</button>)}
+        </div>
+      </header>
+
+      <section className="decision-card">
+        <div className={`risk-score ${data.riskLevel}`}>
+          <span>综合风险</span>
+          <b>{levelLabel[data.riskLevel] || data.riskLevel}</b>
+          <em>{data.score} 分 / 置信度 {data.confidence}%</em>
+        </div>
+        <div className="decision-main">
+          <div className="decision-title-row">
+            <div>
+              <h2>当前环施工研判：{data.selectedRing?.ringNo} 环 / {data.selectedRing?.endMileage}</h2>
+              <p>{data.summary}</p>
+            </div>
+            <button onClick={() => setRingNo(data.currentRing?.ringNo || 336)}>回到当前环 {data.currentRing?.ringNo}</button>
+          </div>
+          <div className="ring-slider">
+            <span>320</span>
+            <input type="range" min={320} max={392} value={ringNo} onChange={(e) => setRingNo(Number(e.target.value))} />
+            <span>392</span>
+            <strong>查看 {ringNo} 环</strong>
+          </div>
+          <div className="finding-grid">
+            {safeArr(data.findings).slice(0, 4).map((f: any, idx: number) => <article className={`finding ${f.level}`} key={idx}>
+              <div><span>{levelLabel[f.level] || f.level}</span><h3>{f.title}</h3></div>
+              <p><b>证据：</b>{f.evidence}</p>
+              <p><b>判断：</b>{f.reason}</p>
+              <p><b>建议：</b>{f.suggestion}</p>
+            </article>)}
+          </div>
+        </div>
+      </section>
+
+      {tab === 'overview' && <>
+        <section className="chart-grid two">
+          <EChartPanel title="切口压力趋势与查看环证据" subtitle="不是只看当前值：对比连续环号趋势、控制线和查看环位置" option={pressureOption} height={330}/>
+          <EChartPanel title="推力-扭矩-速度组合诊断" subtitle="支撑推力/扭矩同步升高、速度下降等异常组合判断" option={comboOption} height={330}/>
+          <EChartPanel title="参数偏离率：当前环 vs 近10环均值" subtitle="偏离超过 10% 即进入关注；超过 20% 可进入报警复核" option={deviationOption} height={310}/>
+          <EChartPanel title="监测响应曲线与报警阈值" subtitle="观察沉降是否连续加速、是否逼近报警阈值" option={monitoringOption} height={310}/>
+        </section>
+        <section className="analysis-layout">
+          <div className="panel evidence-list"><h2>建议动作</h2>{safeArr(data.recommendations).map((r: string, i: number) => <p key={i}>{i+1}. {r}</p>)}</div>
+          <EChartPanel title="数据可信度雷达" subtitle="分析结论可信度来自数据覆盖，不来自页面装饰" option={qualityOption} height={300}/>
+        </section>
+      </>}
+
+      {tab === 'ring' && <section className="chart-grid two"><EChartPanel title="单环参数证据：压力控制" option={pressureOption} height={360}/><EChartPanel title="单环参数证据：组合异常" option={comboOption} height={360}/><EChartPanel title="偏离百分比证据" option={deviationOption} height={330}/><div className="panel"><h2>环号证据链</h2>{metricStats.map((m: any) => <div className="stat-row" key={m.key}><span>{m.name}</span><b>{m.current} {m.unit}</b><em>近10环偏离 {m.deviationVs10Pct}%</em></div>)}</div></section>}
+
+      {tab === 'risk' && <section className="chart-grid two"><EChartPanel title="风险源影响窗口与查看环里程" subtitle="风险源不是名称列表，而是里程窗口和施工参数响应的分析对象" option={riskOption} height={420}/><div className="panel"><h2>风险源证据</h2>{risks.map((r: any) => <div className="risk-row" key={r.riskSourceId}><b>{r.riskName}</b><span>{r.crossingRelation} / {r.startMileage}~{r.endMileage}</span><em>{r.status}</em></div>)}</div></section>}
+
+      {tab === 'monitoring' && <section className="chart-grid two"><EChartPanel title="监测点沉降曲线与阈值" option={monitoringOption} height={430}/><div className="panel"><h2>监测异常排序</h2>{mon.map((p: any) => <div className="risk-row" key={p.pointId}><b>{p.pointCode}</b><span>{p.pointName || p.monitoringItem} / {p.riskName || '未关联风险源'}</span><em>{p.latest?.cumulativeChange ?? '--'} {p.unit} / 距报警 {p.marginToAlarm ?? '--'}mm</em></div>)}</div></section>}
+
+      {tab === 'operation' && <section className="chart-grid two"><EChartPanel title="泥水-注浆-沉降归因证据" subtitle="用于解释沉降是否与注浆量、出浆比重、泥水状态相关" option={groutingOption} height={390}/><EChartPanel title="推力/扭矩/速度多轴诊断" option={comboOption} height={390}/><div className="panel wide"><h2>附近事件闭环</h2>{events.map((e: any) => <div className="event-card" key={e.eventId}><b>{e.eventTime?.slice(0,16)} / {e.ringNo ? `${e.ringNo}环` : '未绑定环号'} / {e.severity}</b><p>{e.description}</p><span>原因：{e.possibleCause || '待补'}；处置：{e.handlingAction || '待补'}；闭环：{e.closureResult || '待补'}</span></div>)}</div></section>}
+
+      {tab === 'source' && <section className="chart-grid two"><EChartPanel title="真实 WebService 数据接入证据链" subtitle="第一份真实资料决定：不能再只假造 PLC 表，应先接 raw payload 与字段映射" option={webGraphOption} height={420}/><div className="panel source-card"><h2>{web.sourceName}</h2><p>调用地址：{web.serviceUrlPattern}；默认端口：{web.defaultPort}</p>{safeArr(web.methods).map((m: any) => <div className="method" key={m.name}><b>{m.name}</b><span>{m.definition}</span><p>{m.purpose}；目标表：{safeArr(m.targetTables).join(' / ')}</p></div>)}<h3>缺口</h3>{safeArr(web.integrationWarnings).map((w: string, i: number) => <p key={i}>- {w}</p>)}</div><div className="panel wide"><h2>数据可信度缺口</h2>{safeArr(dq.missing).map((m: string, i: number) => <p key={i}>{i+1}. {m}</p>)}</div></section>}
+    </div>
+  );
+}

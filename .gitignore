@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+backend/.venv/
+.venv/
+venv/
+
+# build output
+dist/
+build/
+frontend/dist/
+frontend/build/
+
+# python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# env and secrets
+.env
+.env.*
+*.env
+*.key
+*.pem
+config.toml
+
+# logs
+*.log
+logs/
+tmp/
+.temp/
+
+# archives
+*.tar.gz
+*.zip

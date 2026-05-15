@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<base href="http://120.55.70.218:18081/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUNNEL OS - 通苏嘉甬苏州东隧道监测</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #050b14;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            overflow: hidden;
+            color: #e2e8f0;
+            user-select: none;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .font-tech {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .font-mono-tech {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        #app-container {
+            position: relative;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            perspective: 2000px;
+            overflow: hidden;
+        }
+
+        #top-section {
+            flex: 1.5;
+            min-height: 0;
+            position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        #map-leaflet {
+            width: 100%;
+            height: 100%;
+            background: #050b14;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        #top-image-mode {
+            width: 100%;
+            height: 100%;
+            background: #111;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 20;
+            display: none;
+        }
+
+        #top-uploaded-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            opacity: 0.8;
+            filter: contrast(1.1) brightness(0.9);
+        }
+
+        .map-tiles {
+            filter: invert(100%) hue-rotate(180deg) brightness(0.8) contrast(1.2) grayscale(0.8);
+        }
+
+        .leaflet-container {
+            background: #050b14 !important;
+        }
+
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+
+        .marker-pin {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(6, 182, 212, 0.2);
+            border: 2px solid #06b6d4;
+            box-shadow: 0 0 15px #06b6d4;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marker-pin::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        #top-image-cursor {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px #06b6d4;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .glass-panel {
+            background: rgba(13, 22, 35, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            position: absolute;
+            opacity: 0;
+            z-index: 100;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+            will-change: transform, opacity;
+        }
+
+        #control-center {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .control-trigger {
+            width: 40px;
+            height: 40px;
+            background: rgba(6, 182, 212, 0.2);
+            border: 1px solid #06b6d4;
+            color: #06b6d4;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-trigger:hover {
+            background: rgba(6, 182, 212, 0.4);
+            box-shadow: 0 0 15px #06b6d4;
+        }
+
+        .control-panel-content {
+            background: rgba(13, 22, 35, 0.95);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            width: 220px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        #control-center:hover .control-panel-content {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        .btn-upload {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-upload:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: #06b6d4;
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            text-align: center;
+            font-size: 10px;
+            padding: 4px;
+            cursor: pointer;
+            border-radius: 2px;
+            color: #64748b;
+        }
+
+        .mode-btn.active {
+            background: #06b6d4;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .corner-accent::before,
+        .corner-accent::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: #06b6d4;
+            border-style: solid;
+            transition: all 0.3s ease;
+        }
+
+        .corner-accent::before {
+            top: -1px;
+            left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .corner-accent::after {
+            bottom: -1px;
+            right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+
+        #dashboard-card {
+            top: 15%;
+            left: 5%;
+            width: 320px;
+            padding: 24px;
+            transform-origin: 0% 50%;
+            transform: rotateY(60deg) translateX(-100px) scale(0.9);
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease;
+        }
+
+        #dashboard-card.active {
+            opacity: 1;
+            transform: rotateY(0deg) translateX(0) scale(1);
+        }
+
+        #env-card {
+            top: 15%;
+            right: 5%;
+            width: 300px;
+            padding: 24px;
+            transform-origin: 50% 50%;
+            transform: rotateY(-30deg) translateX(50px) scale(0.95);
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease, border-color 0.3s;
+        }
+
+        #env-card.active {
+            opacity: 1;
+            transform: rotateY(0deg) translateX(0) scale(1);
+        }
+
+        #env-card.flipping-out {
+            transform: rotateY(-90deg) scale(0.9) translateZ(50px);
+            opacity: 0.5;
+            filter: blur(4px);
+            transition: transform 0.3s, opacity 0.2s, filter 0.3s;
+        }
+
+        .section-row {
+            margin-bottom: 16px;
+            opacity: 0.4;
+            transition: all 0.5s;
+            border-left: 2px solid transparent;
+            padding-left: 8px;
+        }
+
+        .section-row.highlight {
+            opacity: 1;
+            transform: translateX(12px);
+            border-left: 2px solid #06b6d4;
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.1) 0%, transparent 100%);
+        }
+
+        .progress-rail {
+            background: rgba(255, 255, 255, 0.08);
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 2px;
+            box-shadow: 0 0 15px currentColor;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 2s infinite;
+        }
+
+        #profile-section {
+            flex: 1;
+            min-height: 0;
+            background: #fff;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        #profile-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #profile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: bottom center;
+        }
+
+        #profile-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            pointer-events: none;
+            transform: translateX(-50%);
+            z-index: 2000;
+        }
+
+        #cursor-tooltip {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+            border: 1px solid #3b82f6;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 2001;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            color: #06b6d4;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .legend-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            margin-right: 12px;
+            border-radius: 2px;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        .logo-overlay {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            z-index: 101;
+            pointer-events: none;
+        }
+
+        .logo-main {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 20%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+            letter-spacing: 2px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 6px;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* 导航按钮组 */
+        .nav-buttons {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 150;
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 8px 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-btn-back {
+            background: rgba(6, 182, 212, 0.2);
+            border: 1px solid #06b6d4;
+            color: #06b6d4;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+        }
+
+        .nav-btn-back:hover {
+            background: #06b6d4;
+            color: #000;
+            box-shadow: 0 0 20px #06b6d4;
+        }
+
+        .nav-btn-monitor {
+            background: rgba(0, 200, 100, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .nav-btn-monitor:hover {
+            background: #00ff88;
+            color: #000;
+            box-shadow: 0 0 20px #00ff88;
+        }
+
+        /* ---- Tablet adjustments ---- */
+        @media (max-width: 1024px) {
+            #dashboard-card {
+                width: 280px;
+                padding: 18px;
+            }
+
+            #env-card {
+                width: 260px;
+                padding: 18px;
+            }
+
+            .logo-main {
+                font-size: 1.8rem;
+            }
+        }
+
+        /* ---- Mobile phone adjustments ---- */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+            }
+
+            #app-container {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            /* Navigation buttons */
+            .nav-buttons {
+                top: 10px;
+                gap: 6px;
+                width: calc(100% - 20px);
+                left: 10px;
+                transform: none;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            /* Control center */
+            #control-center {
+                top: 55px;
+                right: 10px;
+            }
+
+            .control-trigger {
+                width: 36px;
+                height: 36px;
+            }
+
+            .control-panel-content {
+                width: 180px;
+                padding: 12px;
+            }
+
+            /* Logo */
+            .logo-overlay {
+                top: 55px;
+                left: 12px;
+            }
+
+            .logo-main {
+                font-size: 1.1rem;
+                letter-spacing: 1px;
+            }
+
+            .logo-overlay .text-sm {
+                font-size: 10px !important;
+                margin-top: 4px !important;
+            }
+
+            /* Info cards - slide from bottom */
+            #dashboard-card,
+            #env-card {
+                position: fixed;
+                top: auto;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                border-radius: 16px 16px 0 0;
+                transform: translateY(110%) !important;
+                padding: 16px;
+            }
+
+            #dashboard-card.active {
+                transform: translateY(0) !important;
+                bottom: 210px;
+                max-height: 40vh;
+                overflow-y: auto;
+            }
+
+            #env-card.active {
+                transform: translateY(0) !important;
+                bottom: 0;
+                height: auto;
+                max-height: 35vh;
+                overflow-y: auto;
+            }
+
+            .card-title {
+                font-size: 0.8rem;
+                padding-bottom: 8px;
+                margin-bottom: 12px;
+            }
+
+            /* Top section */
+            #top-section {
+                flex: none;
+                height: 35vh;
+                min-height: 200px;
+            }
+
+            /* Profile section */
+            #profile-section {
+                flex: none;
+                height: 25vh;
+                min-height: 150px;
+            }
+
+            /* Profile line & cursor */
+            #profile-line {
+                width: 2px;
+            }
+
+            #cursor-tooltip {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+
+            /* Marker pin */
+            .marker-pin {
+                width: 18px;
+                height: 18px;
+            }
+
+            .marker-pin::after {
+                width: 6px;
+                height: 6px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-btn {
+                padding: 5px 10px;
+                font-size: 10px;
+            }
+
+            .logo-main {
+                font-size: 0.95rem;
+            }
+
+            #dashboard-card.active {
+                max-height: 35vh;
+            }
+
+            #env-card.active {
+                max-height: 30vh;
+            }
+
+            .grid.grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app-container">
+
+        <div id="profile-line">
+            <div id="cursor-tooltip">点击查看: 1#盾构区间</div>
+        </div>
+
+        <!-- 导航按钮 -->
+        <div class="nav-buttons">
+            <button class="nav-btn nav-btn-back" onclick="window.location.href='./gis-platform.html'">← 返回</button>
+            <button class="nav-btn nav-btn-monitor"
+                onclick="window.open('https://shield.dadungou.com:9001/shieldMachine/projectaSurvey?token=eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX2lkIjozOTY4LCJ1c2VyX2tleSI6IjhlYzFjZmQzLWQyZmQtNGZjNi04NjIyLWJkNTg5Nzc1Y2Q3OSIsInRlbmFudC1pZCI6MTAwNjksInVzZXJuYW1lIjoi6YCa6IuP5ZiJ55Ss6aG555uuIn0.ctyvRhfw8tJ8hXNVXMJ35WKPWVUsM37QJ8cvkqc9KiHB3S2VfkkoFbdpVSIY0q1oo7gCO8SWkp8VEU-J9Q0lbw','_blank','noopener,noreferrer')">监控平台</button>
+        </div>
+
+        <div id="control-center" class="font-tech">
+            <div class="control-trigger">
+                <i class="fa-solid fa-gear fa-spin-pulse" style="--fa-animation-duration: 3s;"></i>
+            </div>
+            <div class="control-panel-content">
+                <div class="text-xs text-cyan-400 mb-2 font-bold tracking-wider border-b border-cyan-500/30 pb-1">视图设置
+                    VIEW</div>
+
+                <div class="text-[10px] text-gray-500 mb-1">TOP VIEW MODE</div>
+                <div class="mode-switch mb-3">
+                    <div class="mode-btn active" onclick="switchTopMode('map')" id="btn-mode-map">MAP</div>
+                    <div class="mode-btn" onclick="switchTopMode('image')" id="btn-mode-image">IMAGE</div>
+                </div>
+
+                <div class="text-[10px] text-gray-500 mb-1">CUSTOM ASSETS</div>
+
+                <label class="btn-upload mb-2">
+                    <i class="fa-solid fa-map"></i> 上传平面图 (Top)
+                    <input type="file" hidden accept="image/*" onchange="handleImageUpload(this, 'top')">
+                </label>
+
+                <label class="btn-upload">
+                    <i class="fa-solid fa-layer-group"></i> 上传剖面图 (Bottom)
+                    <input type="file" hidden accept="image/*" onchange="handleImageUpload(this, 'bottom')">
+                </label>
+            </div>
+        </div>
+
+        <div class="logo-overlay">
+            <div class="logo-main">通苏嘉甬 · 苏州东隧道</div>
+            <div class="text-sm text-cyan-400 opacity-80 pl-1 mt-2 font-bold tracking-widest">
+                智能地质监测系统
+            </div>
+        </div>
+
+        <div id="dashboard-card" class="glass-panel corner-accent">
+            <div class="close-btn" onclick="closeCards()">✕</div>
+            <div class="card-title font-tech">项目总览 DASHBOARD</div>
+            <div class="grid grid-cols-2 gap-4 mb-8 text-center font-mono-tech">
+                <div class="bg-white/5 border border-white/10 p-3 rounded-lg backdrop-blur-sm">
+                    <div class="text-gray-400 text-[10px] tracking-wider mb-1">设计时速 (KM/H)</div>
+                    <div class="text-3xl font-bold text-white tracking-tighter">350</div>
+                </div>
+                <div class="bg-cyan-900/20 border border-cyan-500/30 p-3 rounded-lg backdrop-blur-sm">
+                    <div class="text-cyan-400 text-[10px] tracking-wider mb-1">已掘进环数</div>
+                    <div class="text-3xl font-bold text-cyan-300 tracking-tighter">3,859</div>
+                </div>
+            </div>
+            <div class="text-[10px] text-gray-500 mb-3 font-tech tracking-[0.2em] uppercase">施工进度 Progress</div>
+            <div id="progress-list">
+                <div class="section-row" id="row-1">
+                    <div class="flex justify-between text-xs mb-1 font-mono-tech">
+                        <span class="text-white font-bold tracking-wide">1# 盾构区间 (5.4km)</span><span
+                            class="text-emerald-400">Completed</span>
+                    </div>
+                    <div class="progress-rail">
+                        <div class="progress-bar bg-emerald-500" style="width: 100%; box-shadow: 0 0 10px #10b981;">
+                        </div>
+                    </div>
+                </div>
+                <div class="section-row" id="row-2">
+                    <div class="flex justify-between text-xs mb-1 font-mono-tech">
+                        <span class="text-white font-bold tracking-wide">2# 盾构区间 (6.4km)</span><span
+                            class="text-yellow-400">36% Working</span>
+                    </div>
+                    <div class="progress-rail">
+                        <div class="progress-bar bg-yellow-500" style="width: 36%; box-shadow: 0 0 10px #eab308;"></div>
+                    </div>
+                </div>
+                <div class="section-row" id="row-total">
+                    <div class="flex justify-between text-xs mb-1 font-mono-tech">
+                        <span class="text-white font-bold tracking-wide">全线累计 (Total)</span><span
+                            class="text-cyan-400">66%</span>
+                    </div>
+                    <div class="progress-rail">
+                        <div class="progress-bar bg-cyan-500" style="width: 66%; box-shadow: 0 0 10px #06b6d4;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="env-card" class="glass-panel corner-accent">
+            <div class="card-title font-tech flex justify-between items-center">
+                <span>地质监控 GEOLOGY</span>
+                <span class="flex items-center gap-2 px-2 py-1 rounded bg-green-500/10 border border-green-500/30">
+                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                    <span class="text-[10px] text-green-400 font-bold tracking-wider">LIVE</span>
+                </span>
+            </div>
+            <div class="mb-6">
+                <div class="text-[10px] text-gray-400 mb-3 font-mono-tech tracking-wider">地层分布 (STRATUM)</div>
+                <div id="legend-container" class="legend-grid"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 font-mono-tech">
+                <div
+                    class="bg-cyan-950/40 border border-cyan-500/20 p-3 rounded text-center transition-colors hover:bg-cyan-900/40">
+                    <div class="text-cyan-400 text-[10px] mb-1">隧道管片外径</div>
+                    <div class="text-white font-bold text-lg">14.3m</div>
+                </div>
+                <div
+                    class="bg-blue-950/40 border border-blue-500/20 p-3 rounded text-center transition-colors hover:bg-blue-900/40">
+                    <div class="text-blue-400 text-[10px] mb-1">设计抗渗等级</div>
+                    <div class="text-white font-bold text-lg">P12</div>
+                </div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-gray-700/50 flex justify-between items-end">
+                <div class="text-[10px] text-gray-500 font-tech">SUZHOU EAST<br>TUNNEL</div>
+                <div class="text-right">
+                    <div class="text-[10px] text-cyan-500 mb-1">CURRENT LOCATION</div>
+                    <div class="text-2xl text-white font-mono-tech font-bold tracking-tighter" id="env-location">
+                        DK53+017</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="top-section">
+            <div id="map-leaflet"></div>
+            <div id="top-image-mode">
+                <img id="top-uploaded-img"
+                    src="https://placehold.co/1400x600/111/444.png?text=UPLOAD+YOUR+PLAN+VIEW+MAP" alt="Top Map">
+                <div id="top-image-cursor"></div>
+            </div>
+        </div>
+
+        <div id="profile-section" class="image-wrapper">
+            <img id="profile-image" src="./剖面图.png" alt="Profile">
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        let topMode = 'map';
+        let isCardsVisible = false;
+        let isFlipping = false;
+
+        const SECTIONS = [
+            { id: '1', range: [0, 0.46], name: "1# 盾构区间", theme: "emerald", legend: [{ color: '#5D4037', label: '4-22 粉砂 (密实)' }, { color: '#1976D2', label: '5-1 粉质黏土' }, { color: '#8D6E63', label: '8-2 粉质黏土' }] },
+            { id: '2', range: [0.46, 0.75], name: "2# 盾构区间 (A)", theme: "yellow", legend: [{ color: '#FBC02D', label: '4-23 粉砂 (夹粉土)' }, { color: '#E64A19', label: '6-22 粉砂' }, { color: '#7B1FA2', label: '7-21 粉土' }] },
+            { id: 'total', range: [0.75, 1.0], name: "2# 盾构区间 (B)", theme: "cyan", legend: [{ color: '#388E3C', label: '1-5 淤泥质粉质黏土' }, { color: '#0288D1', label: '8-1 粉土' }] }
+        ];
+
+        const container = document.getElementById('app-container');
+        const profileLine = document.getElementById('profile-line');
+        const cursorTooltip = document.getElementById('cursor-tooltip');
+        const envLocation = document.getElementById('env-location');
+        const dashboardCard = document.getElementById('dashboard-card');
+        const envCard = document.getElementById('env-card');
+        const legendContainer = document.getElementById('legend-container');
+
+        const mapLeafletDiv = document.getElementById('map-leaflet');
+        const topImageModeDiv = document.getElementById('top-image-mode');
+        const topImageCursor = document.getElementById('top-image-cursor');
+        const topUploadedImg = document.getElementById('top-uploaded-img');
+        const profileImage = document.getElementById('profile-image');
+
+        const trackCoordinates = [
+            [31.2750, 120.7600], [31.2900, 120.7650], [31.3100, 120.7700],
+            [31.3250, 120.7750], [31.3350, 120.7800], [31.3500, 120.7850]
+        ];
+        let map, trackPolyline, currentMarker;
+
+        function initMap() {
+            map = L.map('map-leaflet', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, className: 'map-tiles' }).addTo(map);
+            trackPolyline = L.polyline(trackCoordinates, { color: '#06b6d4', weight: 4, opacity: 0.8 }).addTo(map);
+            map.fitBounds(trackPolyline.getBounds(), { padding: [50, 50] });
+
+            const customIcon = L.divIcon({ className: 'custom-div-icon', html: '<div class="marker-pin"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+            currentMarker = L.marker(trackCoordinates[0], { icon: customIcon }).addTo(map);
+        }
+
+        function handleImageUpload(input, target) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    if (target === 'top') {
+                        topUploadedImg.src = e.target.result;
+                        switchTopMode('image');
+                    } else if (target === 'bottom') {
+                        profileImage.src = e.target.result;
+                    }
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        window.handleImageUpload = handleImageUpload;
+
+        function switchTopMode(mode) {
+            topMode = mode;
+            const btnMap = document.getElementById('btn-mode-map');
+            const btnImg = document.getElementById('btn-mode-image');
+
+            if (mode === 'map') {
+                mapLeafletDiv.style.display = 'block';
+                topImageModeDiv.style.display = 'none';
+                btnMap.classList.add('active');
+                btnImg.classList.remove('active');
+                if (map) map.invalidateSize();
+            } else {
+                mapLeafletDiv.style.display = 'none';
+                topImageModeDiv.style.display = 'block';
+                btnMap.classList.remove('active');
+                btnImg.classList.add('active');
+            }
+        }
+        window.switchTopMode = switchTopMode;
+
+        function getPolylineDistance(latlngs) {
+            let distance = 0;
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                distance += map.distance(latlngs[i], latlngs[i + 1]);
+            }
+            return distance;
+        }
+
+        function getPointAtPercent(percent) {
+            const latlngs = trackPolyline.getLatLngs();
+            const totalDist = getPolylineDistance(latlngs);
+            const targetDist = totalDist * percent;
+            let accumulatedDist = 0;
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                const segmentDist = map.distance(latlngs[i], latlngs[i + 1]);
+                if (accumulatedDist + segmentDist >= targetDist) {
+                    const segmentPercent = (targetDist - accumulatedDist) / segmentDist;
+                    const lat = latlngs[i].lat + (latlngs[i + 1].lat - latlngs[i].lat) * segmentPercent;
+                    const lng = latlngs[i].lng + (latlngs[i + 1].lng - latlngs[i].lng) * segmentPercent;
+                    return [lat, lng];
+                }
+                accumulatedDist += segmentDist;
+            }
+            return latlngs[latlngs.length - 1];
+        }
+
+        let currentSection = SECTIONS[0];
+
+        function updatePosition(clientX) {
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            if (!rect || rect.width === 0) return;
+
+            let x = clientX - rect.left;
+            if (x < 0) x = 0;
+            if (x > rect.width) x = rect.width;
+            const percent = x / rect.width;
+            if (!Number.isFinite(percent)) return;
+
+            profileLine.style.left = `${x}px`;
+
+            if (topMode === 'map') {
+                if (map && currentMarker) {
+                    const newLatLng = getPointAtPercent(percent);
+                    currentMarker.setLatLng(newLatLng);
+                }
+            } else {
+                topImageCursor.style.left = `${x}px`;
+            }
+
+            const newSection = SECTIONS.find(s => percent >= s.range[0] && percent <= s.range[1]) || SECTIONS[SECTIONS.length - 1];
+            if (newSection !== currentSection) {
+                const oldSection = currentSection;
+                currentSection = newSection;
+                if (isCardsVisible) {
+                    triggerElegantPageFlip(oldSection, newSection);
+                } else {
+                    cursorTooltip.innerText = `点击查看: ${currentSection.name.split(' ')[0]}`;
+                }
+            }
+
+            if (isCardsVisible) {
+                let offsetMeters = percent * 11658;
+                let totalMeters = 53017 + offsetMeters;
+                let km = Math.floor(totalMeters / 1000);
+                let m = Math.floor(totalMeters % 1000);
+                envLocation.innerText = `DK${km}+${m.toString().padStart(3, '0')}`;
+            }
+        }
+
+        function triggerElegantPageFlip(oldSection, newSection) {
+            if (isFlipping) return;
+            isFlipping = true;
+            const highlightId = currentSection.id === 'total' ? 'row-2' : `row-${currentSection.id}`;
+            ['row-1', 'row-2', 'row-total'].forEach(id => {
+                const row = document.getElementById(id);
+                if (id === highlightId || (currentSection.id === 'total' && id === 'row-total')) row.classList.add('highlight');
+                else row.classList.remove('highlight');
+            });
+            envCard.classList.add('flipping-out');
+            setTimeout(() => {
+                updateEnvCardContent(currentSection);
+                envCard.classList.remove('flipping-out');
+                setTimeout(() => { isFlipping = false; }, 300);
+            }, 300);
+        }
+
+        function showCards() {
+            if (isCardsVisible) return;
+            isCardsVisible = true;
+            updateEnvCardContent(currentSection);
+            dashboardCard.classList.add('active');
+            envCard.classList.add('active');
+            const highlightId = (currentSection.id === 'total') ? 'row-2' : `row-${currentSection.id}`;
+            document.getElementById(highlightId)?.classList.add('highlight');
+            cursorTooltip.style.opacity = '0';
+        }
+
+        function updateEnvCardContent(sectionData) {
+            let html = '';
+            sectionData.legend.forEach(item => {
+                html += `<div class="legend-item" style="border-left: 3px solid ${item.color}"><div class="color-box" style="background-color: ${item.color}; box-shadow: 0 0 8px ${item.color}"></div><span class="font-mono-tech tracking-tight">${item.label}</span></div>`;
+            });
+            legendContainer.innerHTML = html;
+            envCard.style.borderColor = getThemeColor(sectionData.theme);
+            envCard.style.boxShadow = `0 0 40px ${getThemeColor(sectionData.theme).replace('0.4', '0.1')}`;
+        }
+
+        function getThemeColor(themeName) {
+            if (themeName === 'cyan') return 'rgba(6, 182, 212, 0.4)';
+            if (themeName === 'yellow') return 'rgba(234, 179, 8, 0.4)';
+            if (themeName === 'emerald') return 'rgba(16, 185, 129, 0.4)';
+            return 'rgba(255,255,255,0.2)';
+        }
+
+        function closeCards() {
+            isCardsVisible = false;
+            dashboardCard.classList.remove('active');
+            envCard.classList.remove('active');
+            cursorTooltip.style.opacity = '1';
+        }
+        window.closeCards = closeCards;
+
+        container.addEventListener('mousemove', (e) => updatePosition(e.clientX));
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.glass-panel') || e.target.closest('#control-center') || e.target.closest('.nav-buttons')) return;
+            showCards();
+        });
+        container.addEventListener('touchmove', (e) => { e.preventDefault(); updatePosition(e.touches[0].clientX); }, { passive: false });
+        container.addEventListener('touchstart', (e) => updatePosition(e.touches[0].clientX));
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            showCards();
+            setTimeout(() => {
+                const rect = container.getBoundingClientRect();
+                if (rect && rect.width > 0) updatePosition(rect.left + rect.width * 0.15);
+            }, 100);
+        });
+    </script>
+
+
+<!-- SHIELD_RING_BRIDGE_START -->
+<script>
+(function () {
+  const RING_MIN = 250;
+  const RING_MAX = 392;
+  let applyingFromParent = false;
+  let lastSentRing = null;
+
+  function clampRing(n) {
+    n = Number(n);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(RING_MIN, Math.min(RING_MAX, Math.round(n)));
+  }
+
+  function postRing(ringNo, reason) {
+    if (applyingFromParent) return;
+    ringNo = clampRing(ringNo);
+    if (ringNo == null) return;
+    if (ringNo === lastSentRing) return;
+    lastSentRing = ringNo;
+    window.parent && window.parent.postMessage({
+      source: 'suzhou-center-dashboard-bridge',
+      type: 'SHIELD_RING_CHANGE',
+      ringNo: ringNo,
+      reason: reason || 'unknown'
+    }, '*');
+  }
+
+  function rangeToRing(input) {
+    const raw = Number(input.value);
+    const min = Number(input.min || RING_MIN);
+    const max = Number(input.max || RING_MAX);
+    if (!Number.isFinite(raw)) return null;
+
+    if (min <= RING_MIN && max >= RING_MAX && raw >= RING_MIN && raw <= RING_MAX) {
+      return clampRing(raw);
+    }
+
+    const ratio = max === min ? 0 : (raw - min) / (max - min);
+    return clampRing(RING_MIN + ratio * (RING_MAX - RING_MIN));
+  }
+
+  function ringToRangeValue(input, ringNo) {
+    const min = Number(input.min || RING_MIN);
+    const max = Number(input.max || RING_MAX);
+
+    if (min <= RING_MIN && max >= RING_MAX) {
+      return ringNo;
+    }
+
+    const ratio = (ringNo - RING_MIN) / (RING_MAX - RING_MIN);
+    return min + ratio * (max - min);
+  }
+
+  function findRingSliders() {
+    const all = Array.from(document.querySelectorAll('input[type="range"]'));
+    if (!all.length) return [];
+
+    const preferred = all.filter(el => {
+      const box = el.closest('section,div,main,footer,body') || document.body;
+      const text = (box.innerText || '').slice(0, 500);
+      return /环|ring|里程|mileage|进度|progress|当前/i.test(text);
+    });
+
+    return preferred.length ? preferred : all;
+  }
+
+  function parseRingFromText() {
+    const text = document.body ? (document.body.innerText || '') : '';
+    const candidates = [];
+    const patterns = [
+      /(?:当前|查看|环号|施工|推进)[^\d]{0,8}(\d{3})\s*环?/g,
+      /(\d{3})\s*环/g,
+      /ring[^\d]{0,8}(\d{3})/ig
+    ];
+
+    for (const re of patterns) {
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const n = clampRing(Number(m[1]));
+        if (n != null) candidates.push(n);
+      }
+    }
+    return candidates.length ? candidates[0] : null;
+  }
+
+  function bindSliders() {
+    const sliders = findRingSliders();
+    sliders.forEach(input => {
+      if (input.dataset.shieldRingBridgeBound === '1') return;
+      input.dataset.shieldRingBridgeBound = '1';
+
+      const handler = () => postRing(rangeToRing(input), 'range-input');
+      input.addEventListener('input', handler);
+      input.addEventListener('change', handler);
+      input.addEventListener('pointerup', handler);
+      input.addEventListener('mouseup', handler);
+      input.addEventListener('touchend', handler);
+    });
+  }
+
+  function applyRingToSliders(ringNo) {
+    const sliders = findRingSliders();
+    sliders.forEach(input => {
+      input.value = String(ringToRangeValue(input, ringNo));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
+
+  window.addEventListener('message', function (event) {
+    const data = event.data || {};
+    if (!data || data.type !== 'SET_RING') return;
+
+    const ringNo = clampRing(data.ringNo);
+    if (ringNo == null) return;
+
+    applyingFromParent = true;
+    try {
+      applyRingToSliders(ringNo);
+      window.__shieldSelectedRing = ringNo;
+      document.documentElement.dataset.selectedRing = String(ringNo);
+    } finally {
+      setTimeout(() => { applyingFromParent = false; }, 80);
+    }
+  });
+
+  ['input', 'change', 'pointerup', 'mouseup', 'touchend', 'click'].forEach(type => {
+    document.addEventListener(type, function (event) {
+      bindSliders();
+      const target = event.target;
+      if (target && target.matches && target.matches('input[type="range"]')) {
+        postRing(rangeToRing(target), 'document-' + type);
+      } else {
+        const parsed = parseRingFromText();
+        if (parsed != null) postRing(parsed, 'text-' + type);
+      }
+    }, true);
+  });
+
+  let debounceTimer = null;
+  const observer = new MutationObserver(() => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      bindSliders();
+      const parsed = parseRingFromText();
+      if (parsed != null) postRing(parsed, 'mutation-text');
+    }, 80);
+  });
+
+  function start() {
+    bindSliders();
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    const parsed = parseRingFromText();
+    if (parsed != null) postRing(parsed, 'initial-text');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+
+  setTimeout(start, 500);
+  setTimeout(start, 1500);
+  setInterval(() => {
+    bindSliders();
+    const parsed = parseRingFromText();
+    if (parsed != null) postRing(parsed, 'interval-text');
+  }, 1200);
+
+  window.__shieldRingBridgeReady = true;
+})();
+</script>
+<!-- SHIELD_RING_BRIDGE_END -->
+
+</body>
+
+</html>
