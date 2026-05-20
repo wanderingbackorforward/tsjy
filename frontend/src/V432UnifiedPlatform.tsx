@@ -209,27 +209,29 @@ function mergeSummary(remote: any) {
 }
 function mergeAdvanced(remote: any) { const fallback = fallbackAdvanced(); const data = remote?.data || remote || {}; return { operation: { ...fallback.operation, ...(data.operation || {}) }, slurry: { ...fallback.slurry, ...(data.slurry || {}) }, segment: { ...fallback.segment, ...(data.segment || {}) } } }
 
-function usePlatformData() {
+function usePlatformData(): PlatformData & { status: string; loading: boolean; reload: () => void } {
   const [summary, setSummary] = useState(() => fallbackSummary())
   const [advanced, setAdvanced] = useState(() => fallbackAdvanced())
-  const [status, setStatus] = useState('稳定展示模式')
+  const [status, setStatus] = useState('正在连接后端')
   const [loading, setLoading] = useState(false)
-
-  const reload = () => {
+  const load = async () => {
     setLoading(true)
-    setSummary(fallbackSummary())
-    setAdvanced(fallbackAdvanced())
-    setStatus('稳定展示模式')
-    window.setTimeout(() => setLoading(false), 300)
+    try {
+      const json = await fetchApi(`/api/report-cockpit/summary?deviceId=${DEVICE_ID}`)
+      setSummary(mergeSummary(json))
+      setAdvanced(fallbackAdvanced())
+      setStatus('后端已连接')
+    } catch (error) {
+      console.warn('[V432] summary unavailable:', error)
+      setSummary(fallbackSummary())
+      setAdvanced(fallbackAdvanced())
+      setStatus('后端暂不可用，使用稳定兜底数据')
+    } finally {
+      setLoading(false)
+    }
   }
-
-  useEffect(() => {
-    setSummary(fallbackSummary())
-    setAdvanced(fallbackAdvanced())
-    setStatus('稳定展示模式')
-  }, [])
-
-  return { summary, advanced, status, loading, reload }
+  useEffect(() => { load(); const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer) }, [])
+  return { summary, advanced, status, loading, reload: load }
 }
 
 function chartBase(title?: string): echarts.EChartsOption { return { backgroundColor: 'transparent', title: title ? { text: title, left: 12, top: 8, textStyle: { color: C.text, fontSize: 13, fontWeight: 700 } } : undefined, textStyle: { color: C.text }, tooltip: { trigger: 'axis', backgroundColor: 'rgba(2,8,18,.92)', borderColor: 'rgba(18,217,255,.4)', textStyle: { color: C.text } }, grid: { left: 42, right: 22, top: title ? 46 : 24, bottom: 32 }, xAxis: { type: 'category', axisLine: { lineStyle: { color: 'rgba(141,244,255,.35)' } }, axisTick: { show: false }, axisLabel: { color: C.muted } }, yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(141,244,255,.12)' } }, axisLabel: { color: C.muted } } } }
