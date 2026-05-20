@@ -105,7 +105,7 @@ function useRoute() {
 
 function directApiBase() { const { protocol, hostname } = window.location; return `${protocol}//${hostname}:8100` }
 
-async function fetchJson(url: string, timeoutMs = 12000) {
+async function fetchJson(url: string, timeoutMs = 60000) {
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
