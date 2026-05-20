@@ -215,11 +215,20 @@ function usePlatformData(): PlatformData & { status: string; loading: boolean; r
   const [status, setStatus] = useState('正在连接后端')
   const [loading, setLoading] = useState(false)
   const load = async () => {
-    setLoading(true); let ok = 0
-    try { const json = await fetchApi(`/api/report-cockpit/summary?deviceId=${DEVICE_ID}`); setSummary(mergeSummary(json)); ok += 1 } catch (error) { console.warn('[V432] summary unavailable:', error); setSummary(fallbackSummary()) }
-    try { const json = await fetchApi(`/api/report-cockpit/specialized-pages-v2?deviceId=${DEVICE_ID}`); setAdvanced(mergeAdvanced(json)); ok += 1 } catch (error) { console.warn('[V432] specialized unavailable:', error); setAdvanced(fallbackAdvanced()) }
-    setStatus(ok === 2 ? '后端已连接' : ok === 1 ? '部分接口已连接' : '后端暂不可用，使用稳定兜底数据')
-    setLoading(false)
+    setLoading(true)
+    try {
+      const json = await fetchApi(`/api/report-cockpit/summary?deviceId=${DEVICE_ID}`)
+      setSummary(mergeSummary(json))
+      setAdvanced(fallbackAdvanced())
+      setStatus('后端已连接')
+    } catch (error) {
+      console.warn('[V432] summary unavailable:', error)
+      setSummary(fallbackSummary())
+      setAdvanced(fallbackAdvanced())
+      setStatus('后端暂不可用，使用稳定兜底数据')
+    } finally {
+      setLoading(false)
+    }
   }
   useEffect(() => { load(); const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer) }, [])
   return { summary, advanced, status, loading, reload: load }
