@@ -195,7 +195,7 @@ function Layout({ active, children }: { active: string; children: React.ReactNod
       <aside className="v413s-side">
         <a className="v413s-brand" href="/">
           <span>SHIELD TUNNEL ANALYTICS</span>
-          <b>盾构施工监控研判平台</b>
+          <b>通苏嘉甬施工监测与盾构研判平台</b>
         </a>
         <nav>
           {NAV.map(([href, title, sub]) => (

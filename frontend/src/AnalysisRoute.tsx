@@ -201,7 +201,7 @@ function Shell({ active, children }: { active: string; children: ReactNode }) {
     <div className="analysis-shell">
       <aside className="analysis-side">
         <div className="analysis-brand">
-          <span>盾构施工监控研判平台</span>
+          <span>通苏嘉甬施工监测与盾构研判平台</span>
           <b>现场监测分析</b>
         </div>
         <nav>

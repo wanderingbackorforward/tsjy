@@ -188,7 +188,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <header className="v428-top">
         <div className="v428-brand">
           <span>AUTONOMOUS SHIELD TUNNELING SYSTEM</span>
-          <b>盾构施工研判驾驶舱</b>
+          <b>通苏嘉甬施工监测与盾构研判平台</b>
         </div>
         <nav>
           {NAV.map(([href, title, sub]) => (

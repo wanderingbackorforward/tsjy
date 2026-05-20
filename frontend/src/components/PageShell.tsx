@@ -14,7 +14,7 @@ export function PageShell({ page, setPage, children }: { page: string; setPage: 
       <header className="topbar glass">
         <div className="brand-block">
           <div className="eyebrow">SHIELD TUNNEL ANALYTICS</div>
-          <h1>盾构施工监控研判平台</h1>
+          <h1>通苏嘉甬施工监测与盾构研判平台</h1>
         </div>
         <nav className="topnav">
           {navItems.map(([key, title, sub]) => (

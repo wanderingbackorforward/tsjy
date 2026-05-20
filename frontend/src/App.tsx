@@ -243,7 +243,7 @@ function DashboardShell({ children, page, setPage }: { children: React.ReactNode
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand"><span>现场监测分析</span><strong>盾构施工监控研判平台</strong></div>
+        <div className="brand"><span>现场监测分析</span><strong>通苏嘉甬施工监测与盾构研判平台</strong></div>
         <nav>{NAV.map(([key,title,sub]) => <button key={key} className={page===key?'active':''} onClick={()=>setPage(key)}><b>{title}</b><em>{sub}</em></button>)}</nav>
       </header>
       {children}

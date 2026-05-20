@@ -98,7 +98,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="v427">
       <header className="v427-top">
-        <div className="v427-brand"><span>AUTONOMOUS SHIELD TUNNELING SYSTEM</span><b>盾构施工研判驾驶舱</b></div>
+        <div className="v427-brand"><span>AUTONOMOUS SHIELD TUNNELING SYSTEM</span><b>通苏嘉甬施工监测与盾构研判平台</b></div>
         <nav>{NAV.map(([href, title, sub]) => <a key={href} href={href} className={path === href ? 'active' : ''}><b>{title}</b><span>{sub}</span></a>)}</nav>
         <div className="v427-clock"><b>{new Date().toLocaleDateString()}</b><span>实时研判</span></div>
       </header>
