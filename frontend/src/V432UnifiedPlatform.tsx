@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as echarts from 'echarts'
 
 type AnyObj = Record<string, any>
@@ -63,9 +63,8 @@ function getBasePrefix() {
 }
 
 function realUrlFor(path: string) {
-  const base = getBasePrefix()
-  if (path === '/') return base ? `${base}/` : '/'
-  return `${base}${path}`
+  if (path === '/') return '/tsjy/'
+  return `/tsjy${path}`
 }
 
 function emitRouteChange() { window.dispatchEvent(new Event('tsjy-v432-route-change')) }
@@ -117,7 +116,7 @@ async function fetchJson(url: string, timeoutMs = 12000) {
 }
 
 async function fetchApi(path: string) {
-  const candidates = [`${directApiBase()}${path}`, path, `/tsjy${path}`]
+  const candidates = [path]
   let lastError: unknown = null
   for (const url of candidates) {
     try { return await fetchJson(url) } catch (error) { lastError = error; console.warn('[V432] API candidate failed:', url, error) }
