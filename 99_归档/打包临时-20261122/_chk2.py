@@ -1,0 +1,10 @@
+import paramiko, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("120.55.70.218", username="root", password="TJ2016nn@xie", timeout=10, allow_agent=False, look_for_keys=False)
+s,o,e = c.exec_command("grep -r 'root\|alias\|location' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | head -30")
+print(o.read().decode("utf-8","replace"))
+s,o,e = c.exec_command("nginx -t 2>&1 && nginx -s reload 2>&1")
+print("RELOAD:", o.read().decode("utf-8","replace") + e.read().decode("utf-8","replace"))
+c.close()

@@ -1,0 +1,12 @@
+import paramiko, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("120.55.70.218", username="root", password="TJ2016nn@xie", timeout=10, allow_agent=False, look_for_keys=False)
+s,o,e = c.exec_command("grep title /tmp/tsjy/frontend/dist/index.html")
+print("/tmp dist:", o.read().decode("utf-8","replace"))
+s,o,e = c.exec_command("grep title /root/builds/tsjy/frontend/dist/index.html")
+print("/root/builds dist:", o.read().decode("utf-8","replace"))
+s,o,e = c.exec_command("ps aux | grep -E 'nginx|node|serve' | grep -v grep")
+print("processes:", o.read().decode("utf-8","replace"))
+c.close()

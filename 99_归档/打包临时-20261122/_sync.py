@@ -1,0 +1,10 @@
+import paramiko, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("120.55.70.218", username="root", password="TJ2016nn@xie", timeout=10, allow_agent=False, look_for_keys=False)
+s,o,e = c.exec_command("cp -r /root/builds/tsjy/frontend/dist/* /opt/tsjy-frontend/dist/ 2>&1; echo DONE")
+print(o.read().decode("utf-8","replace") + e.read().decode("utf-8","replace"))
+s,o,e = c.exec_command("grep title /opt/tsjy-frontend/dist/index.html")
+print("VERIFY:", o.read().decode("utf-8","replace"))
+c.close()
