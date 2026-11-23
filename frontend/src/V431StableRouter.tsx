@@ -270,7 +270,7 @@ function Shell({ children, status }: { children: React.ReactNode; status: string
   return (
     <div className="v431">
       <header className="v431-top">
-        <div className="v431-brand"><span>AUTONOMOUS SHIELD TUNNELING SYSTEM</span><b>通苏嘉甬施工监测与盾构研判平台</b></div>
+        <div className="v431-brand"><span>AUTONOMOUS SHIELD TUNNELING SYSTEM</span><b>通苏嘉甬盾构施工监测与智能研判平台系统</b></div>
         <nav>
           {NAV.map(([href, title, sub]) => (
             <a key={href} href={href} className={path === href || (href === '/intelligent-analysis' && ['/ai-diagnosis', '/smart-analysis'].includes(path)) ? 'active' : ''}>

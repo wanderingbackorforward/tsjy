@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as echarts from 'echarts'
 
 type AnyObj = Record<string, any>
@@ -11,7 +11,7 @@ type PlatformData = {
   advanced: { operation: AnyObj; slurry: AnyObj; segment: AnyObj }
 }
 
-const PLATFORM_TITLE = '通苏嘉甬施工监测与盾构研判平台'
+const PLATFORM_TITLE = '通苏嘉甬盾构施工监测与智能研判平台系统'
 const DEVICE_ID = 'DZ1360'
 
 const NAV_ITEMS: NavItem[] = [
